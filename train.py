@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 import umap
 import argparse
 import warnings
+import scipy.stats
 
 from utils import inputs_summary
 from data import load_data, to_relative, mask_gt
-from optimization import optimize_gd, compute_cosine_dists, compute_dists
+from optimization import optimize_gd, deserialize_network_params, distance_computors
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update('jax_platform_name', 'cpu')
@@ -17,10 +18,19 @@ jax.config.update('jax_platform_name', 'cpu')
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+valid_dists = ['l2', 'cosine', 'mlp']
+
+
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, m-h, m+h
 
 
 def main(args: argparse.Namespace):
-    data = load_data()
+    data = load_data(path=args.data)
     print(inputs_summary(data, args))
     data_numpy = data.to_numpy()
     if args.normalize:
@@ -29,6 +39,7 @@ def main(args: argparse.Namespace):
     all_dists = []
     all_masked_indexes = []
 
+    val_errors = []
     for i in range(args.cv_folds):
         masked_data_numpy, masked_indexes = mask_gt(data_numpy, args.val)
 
@@ -36,14 +47,23 @@ def main(args: argparse.Namespace):
         def compute_val_error(dists):
             return jnp.mean(jnp.abs(dists - data_numpy)[masked_indexes])
         
-        optim_coords = optimize_gd(masked_data_numpy, args, compute_val_error)
-        optim_coords = optim_coords.reshape(-1, args.dims)
-        distance_computor = compute_dists if args.dist == 'l2' else compute_cosine_dists
-        dists = distance_computor(optim_coords, data.shape[1], args.dims)
+        optim_params = optimize_gd(masked_data_numpy, args, compute_val_error)
+        distance_computor = distance_computors[args.dist]
+        dists = distance_computor(optim_params, data.shape[1], args.dims)
         all_dists.append(dists)
+        val_errors.append(compute_val_error(dists))
         all_masked_indexes.append(masked_indexes)
 
-    np.save('optim_coords.npy', optim_coords)
+    # compute val error statistics
+    val_errors = jnp.array(val_errors)
+    mean, low, high = mean_confidence_interval(val_errors)
+    print(f"Mean val error: {mean} ± {mean - low}")
+    print(f"Std val error: {jnp.std(val_errors)}")
+    print(f"Median val error: {jnp.median(val_errors)}")
+    np.save('results/optim_params.npy', optim_params)
+
+    optim_coords = optim_params if args.dist != 'mlp' else optim_params[:(data.shape[1]+data.shape[0])*args.dims]
+    optim_coords = optim_coords.reshape(-1, args.dims)
 
     if not args.no_umap:
         reducer = umap.UMAP(metric='cosine', n_neighbors=100, min_dist=0)
@@ -64,7 +84,7 @@ def main(args: argparse.Namespace):
         #for j,i in np.argwhere(masked_indexes):
         #    plt.plot([optim_coords[i, 0], optim_coords[j+data.shape[1], 0]], [optim_coords[i, 1], optim_coords[j+data.shape[1], 1]], color=plt.cm.RdYlGn(1 - data_numpy[j, i]))
                 # plt.text((optim_coords[i, 0] + optim_coords[j+data.shape[1], 0]) / 2, (optim_coords[i, 1] + optim_coords[j+data.shape[1], 1]) / 2, f'{np.linalg.norm(optim_coords[i] - optim_coords[j+data.shape[1]]):.2f}', fontsize=7)
-        plt.savefig('result.png',bbox_inches='tight')
+        plt.savefig('plots/result.png',bbox_inches='tight')
         print("Saved the result in result.png")
 
     # plot the estimated distance vs the ground truth distance for train and val for all folds on the same plot
@@ -82,7 +102,6 @@ def main(args: argparse.Namespace):
         x_val += data_numpy[masked_indexes].tolist()
         y_train += dists[~masked_indexes].tolist()
         y_val += dists[masked_indexes].tolist()
-        # compute the error for each point
         errors_train += np.abs(dists[~masked_indexes] - data_numpy[~masked_indexes]).tolist()
         errors_val += np.abs(dists[masked_indexes] - data_numpy[masked_indexes]).tolist()
         # count the number of non-null values per row
@@ -101,7 +120,7 @@ def main(args: argparse.Namespace):
     # plt.xlim(0, 40)
     # plt.ylim(0, 40)
     plt.legend()
-    plt.savefig('error.png')
+    plt.savefig('plots/error.png')
 
     # plot the train and test errors as a function of the counts per row (or col), that is, c_train and c_val
     fig, ax = plt.subplots(1, 2, figsize=(10, 10))
@@ -113,7 +132,7 @@ def main(args: argparse.Namespace):
     ax[1].set_xlabel('Number of non-null values per row')
     ax[1].set_ylabel('Error')
     ax[1].set_title('Val error')
-    plt.savefig('error_per_row.png')
+    plt.savefig('plots/error_per_row.png')
     print("end !")
 
 if __name__ == '__main__':
@@ -142,7 +161,7 @@ if __name__ == '__main__':
         '--dist',
         type=str,
         default='l2',
-        help='Distance to use for the optimization. Can be "l2" or "cosine".'
+        help=f'Distance to use for the optimization. Can be any value from {valid_dists}.'
     )
     parser.add_argument(
         '--dims',
@@ -172,6 +191,17 @@ if __name__ == '__main__':
         default=5,
         help='Number of folds for cross-validation.'
     )
+    parser.add_argument(
+        '--init',
+        type=str,
+        default='random',
+        help=f'Initialization for the coordinates. Can be "random" or any valid dist: {valid_dists}.'
+    )
+    parser.add_argument(
+        '--freeze-encoder',
+        action='store_true',
+        help='Freeze the encoder (latent space coordinates) and only train the decoder (MLP). This is only relevant when using the MLP distance, and is recommended only with a non-random initialization.'
+    )
     args = parser.parse_args()
 
     if not args.normalize and args.dist == 'cosine':
@@ -180,7 +210,13 @@ if __name__ == '__main__':
     if args.no_umap and args.dims > 2:
         warnings.warn("UMAP is deactivated but the number of dimensions is greater than 2. No visualization will be computed.")
 
-    if args.dist not in ['l2', 'cosine']:
-        raise ValueError(f"Unknown distance {args.dist}. Available values are ['l2', 'cosine'].")
+    if args.dist not in valid_dists:
+        raise ValueError(f"Unknown distance {args.dist}. Available values are {valid_dists}.")
+
+    if args.init not in valid_dists and args.init != 'random':
+        raise ValueError(f"Unknown initialization {args.init}. Available values are {valid_dists} and 'random'.")
+    
+    if args.freeze_encoder and args.dist != 'mlp':
+        warnings.warn("Freezing the encoder is only relevant when using the MLP distance. Because {args.dist} is an encoder-only distance, nothing will be learned. You should remove the --freeze-encoder flag.")
 
     main(args)

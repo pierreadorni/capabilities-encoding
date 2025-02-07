@@ -15,8 +15,13 @@ def load_data(path='data.csv'):
             last_dataset_name = dataset
         new_cols.append(dataset if "Unnamed" in modality else dataset + ' ' + modality)
     data.columns = new_cols
-    data = data.dropna(axis=1, thresh=1)
-    data = data.dropna(axis=0, thresh=1)
+    # drop columns and rows with too many missing values
+    last_shape = (0,0)
+    while last_shape != data.shape:
+        last_shape = data.shape
+        data = data.dropna(axis=1, thresh=5)
+        data = data.dropna(axis=0, thresh=5)
+        
     # numbers are stored as strings with a comma in place of the dot, so we convert them to floats
     data = data.apply(lambda x: x.str.replace(',', '.').astype(float) if x.dtype == 'object' else x)
     # replace raw accuracies with distance to best accuracy for each col
