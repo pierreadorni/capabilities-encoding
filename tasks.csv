@@ -15,8 +15,8 @@ RESISC-45,classification
 RSD46,classification
 AID,classification
 PatternNet,classification
-FAIR1M,oriented object detection
-DIOR-R,oriented object detection
+FAIR1M,object detection
+DIOR-R,object detection
 DIOR,object detection
 Potsdam,segmentation
 iSAID,segmentation
@@ -42,10 +42,10 @@ EuroSat,classification
 NaSC-TG2,classification
 Onera CD,change detection
 Sen12MS,segmentation
-DOTA-V1.0,oriented object detection
-DOTA-V2.0,oriented object detection
+DOTA-V1.0,object detection
+DOTA-V2.0,object detection
 LoveDA,segmentation
-HRCS2016,oriented object detection
+HRCS2016,object detection
 CDD,change detection
 GID,segmentation
 NWPUVHR-10,object detection

@@ -7,7 +7,7 @@ import umap
 import argparse
 import warnings
 import scipy.stats
-from adjustText import adjust_text
+
 import seaborn as sns
 from utils import inputs_summary
 from data import load_data, to_relative, mask_gt
@@ -18,6 +18,7 @@ from optimization import (
     distance_computors,
     full_distance_computors,
 )
+from plots import plot_dists, plot_umap
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -101,159 +102,12 @@ def main(args: argparse.Namespace):
         optim_coords = reducer.fit_transform(distance_matrix)
 
     if args.dims <= 2 or not args.no_umap:
-        # plot the results
-        fig, ax = plt.subplots(figsize=(15, 15))
-        ax.scatter(
-            optim_coords[: data.shape[1], 0],
-            optim_coords[: data.shape[1], 1],
-            color="blue",
-            label="Downstream tasks",
-        )
-        ax.scatter(
-            optim_coords[data.shape[1] :, 0],
-            optim_coords[data.shape[1] :, 1],
-            color="orange",
-            label="Models",
-        )
-        texts = []
-        for i, txt in enumerate(data.columns):
-            texts.append(
-                ax.text(
-                    optim_coords[i, 0],
-                    optim_coords[i, 1],
-                    txt,
-                    ha="center",
-                    va="center",
-                )
-            )
-        for i, txt in enumerate(data.index):
-            texts.append(
-                ax.text(
-                    optim_coords[i + data.shape[1], 0],
-                    optim_coords[i + data.shape[1], 1],
-                    txt,
-                    ha="center",
-                    va="center",
-                )
-            )
-
-        for t in texts:
-            t.set_transform(ax.transData)
-
-        adjust_text(
-            texts,
-            x=optim_coords[:, 0],
-            y=optim_coords[:, 1],
-            # force_points=0.15,
-            arrowprops=dict(arrowstyle="->", color="gray"),
-        )
-
-        # remove the ticks and box
-        plt.xticks([])
-        plt.yticks([])
-        plt.box(False)
-
-        plt.legend()
-
+        fig, ax = plot_umap(optim_coords, data)
         plt.savefig("plots/result.png", bbox_inches="tight", dpi=300)
-        print("Saved the result in result.png")
 
-    # plot the estimated distance vs the ground truth distance for train and val for all folds on the same plot
-    x_train = []
-    x_val = []
-    y_train = []
-    y_val = []
-    c_train = []
-    c_val = []
-    errors_train = []
-    errors_val = []
-    for dists, masked_indexes in zip(all_dists, all_masked_indexes):
-        x_train += data_numpy[~masked_indexes].tolist()
-        x_val += data_numpy[masked_indexes].tolist()
-        y_train += dists[~masked_indexes].tolist()
-        y_val += dists[masked_indexes].tolist()
-        errors_train += np.abs(
-            dists[~masked_indexes] - data_numpy[~masked_indexes]
-        ).tolist()
-        errors_val += np.abs(
-            dists[masked_indexes] - data_numpy[masked_indexes]
-        ).tolist()
-        # count the number of non-null values per row
-        row_counts = np.sum(~np.isnan(data_numpy), axis=0)
-        row_counts = row_counts[None, :]
-        c_train += row_counts.repeat(data_numpy.shape[0], axis=0)[
-            ~masked_indexes
-        ].tolist()
-        c_val += row_counts.repeat(data_numpy.shape[0], axis=0)[masked_indexes].tolist()
-
-    # build a df with x, y, count and type
-    predictions_df = pd.DataFrame(
-        {
-            "x": x_train[::10],
-            "y": y_train[::10],
-            "Number of Fine-tunings": c_train[::10],
-            "Split": "Train",
-        }
-    )
-    predictions_df = pd.concat(
-        [
-            predictions_df,
-            pd.DataFrame(
-                {
-                    "x": x_val,
-                    "y": y_val,
-                    "Number of Fine-tunings": c_val,
-                    "Split": "Val",
-                }
-            ),
-        ],
-        ignore_index=True,
-    )
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    plt.rcParams.update({"font.size": 14})
-    plt.rcParams.update({"axes.labelsize": 14})
-    plt.rcParams.update({"xtick.labelsize": 14})
-    plt.rcParams.update({"ytick.labelsize": 14})
-    norm = plt.Normalize(
-        predictions_df["Number of Fine-tunings"].min(),
-        predictions_df["Number of Fine-tunings"].max(),
-    )
-    sm = plt.cm.ScalarMappable(cmap="viridis", norm=norm)
-    sns.scatterplot(
-        predictions_df,
-        x="x",
-        y="y",
-        hue="Number of Fine-tunings",
-        palette="viridis",
-        style="Split",
-        ax=ax,
-    )
-    plt.colorbar(sm, label="Nombre de fine-tunings", ax=ax)
-    # remove the color scale from the legend
-    handles, labels = ax.get_legend_handles_labels()
-    legend_elements = [h for h, l in zip(handles, labels) if l == "Train" or l == "Val"]
-    legend_labels = [l for l in labels if l == "Train" or l == "Val"]
-    ax.legend(legend_elements, legend_labels)
-    plt.ylabel("Distance estimée $d$", fontsize=14)
-    plt.xlabel("Distance réelle $\Delta$", fontsize=14)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.box(False)
+    fig, ax = plot_dists(all_dists, all_masked_indexes, data_numpy)
     plt.savefig("plots/error.pdf", dpi=300, bbox_inches="tight")
     plt.rcParams.update(plt.rcParamsDefault)
-
-    # plot the train and test errors as a function of the counts per row (or col), that is, c_train and c_val
-    fig, ax = plt.subplots(1, 2, figsize=(10, 10))
-    ax[0].scatter(c_train, errors_train, c="blue", label="Train")
-    ax[0].set_xlabel("Number of non-null values per row")
-    ax[0].set_ylabel("Error")
-    ax[0].set_title("Train error")
-    ax[1].scatter(c_val, errors_val, c="orange", label="Val")
-    ax[1].set_xlabel("Number of non-null values per row")
-    ax[1].set_ylabel("Error")
-    ax[1].set_title("Val error")
-    plt.savefig("plots/error_per_row.png")
     print("end !")
 
 

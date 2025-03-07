@@ -18,9 +18,10 @@ api_key = env.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
 key_hints = {
-    "gsd": "[list of numbers] (ground sample distance in meters, ex: [0.5] or [10, 20, 30])",
+    "gsd": "[list of numbers] (ground sample distance in meters, ex: [0.5] or [10, 20, 30]. Can be inferred from the sensor if found)",
     "n_samples": "[integer] (number of images in the dataset. if the training and test splits are explicitly separated, use the training set)",
     "task_type": "[string] (classification, segmentation, change detection, object detection, oriented object detection, or super-resolution)",
+    "sensor": "[string] (name of the sensor used to capture the images, ex: 'Landsat 8', 'Sentinel-2', 'Aerial')",
 }
 
 model_id = "gemini-2.0-flash"
