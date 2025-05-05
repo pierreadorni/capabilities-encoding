@@ -6,21 +6,7 @@ A Capabilities Encoding Approach"**.
 ## Abstract
 
 > Foundation models constitute a significant advancement
-in computer vision: after a single, albeit costly, training
-phase, they can address a wide array of tasks. In the field
-of Earth observation, over 75 remote sensing vision foun-
-dation models have been developed in the past four years.
-However, none has consistently outperformed the others
-across all available downstream tasks. To facilitate their
-comparison, we propose a cost-effective method for predict-
-ing a model’s performance on multiple downstream tasks
-without the need for fine-tuning on each one. This method
-is based on what we call “capabilities encoding.” The util-
-ity of this novel approach is twofold: we demonstrate its
-potential to simplify the selection of a foundation model for
-a given new task, and we employ it to offer a fresh perspec-
-tive on the existing literature, suggesting avenues for future
-research.
+in computer vision: after a single, albeit costly, training phase, they can address a wide array of tasks. In the field of Earth observation, over 75 remote sensing vision foundation models have been developed in the past four years. However, none has consistently outperformed the others across all available downstream tasks. To facilitate their comparison, we propose a cost-effective method for predicting a model’s performance on multiple downstream tasks without the need for fine-tuning on each one. This method is based on what we call “capabilities encoding.” The utility of this novel approach is twofold: we demonstrate its potential to simplify the selection of a foundation model for a given new task, and we employ it to offer a fresh perspective on the existing literature, suggesting avenues for future research.
 
 ## Installation (unix)
 
