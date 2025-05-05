@@ -5,9 +5,9 @@ from functools import partial
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, CheckButtons
-from data import load_data, to_relative, mask_gt
-from utils import inputs_summary
-from optimization import optimize_gd, distance_computors
+from capemb.data import load_data, to_relative, mask_gt
+from capemb.utils import inputs_summary
+from capemb.optimization import optimize_gd, distance_computors
 from tqdm import tqdm
 
 jax.config.update("jax_enable_x64", True)
@@ -95,7 +95,7 @@ def dimension_grid_search():
 
 
 def main():
-    data = load_data(path="data_cleaned.csv")
+    data = load_data(path="data/data_cleaned.csv")
     args = config()
     print(inputs_summary(data, args))
 

@@ -46,9 +46,10 @@ def plot_umap(optim_coords, data):
 
     adjust_text(
         texts,
-        x=optim_coords[:, 0],
-        y=optim_coords[:, 1],
+        # x=optim_coords[:, 0],
+        # y=optim_coords[:, 1],
         # force_points=0.15,
+        # expand=(0.1, 0.1),
         arrowprops=dict(arrowstyle="->", color="gray"),
     )
 
@@ -143,5 +144,6 @@ def plot_dists(all_dists, all_masked_indexes, data_numpy):
     plt.xlabel("Ground-Truth $\Delta$", fontsize=14)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    plt.box(False)
+    # plt.box(False)
+    sns.despine()
     return fig, ax

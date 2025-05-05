@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from data import load_data, to_relative, mask_gt
-from utils import inputs_summary
+from capemb.data import load_data, to_relative, mask_gt
+from capemb.utils import inputs_summary
 import jax
 from jax import jit
 import jax.numpy as jnp
-from optimization import optimize_gd, distance_computors
+from capemb.optimization import optimize_gd, distance_computors
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
@@ -47,7 +47,7 @@ def mean_error_per_index(errors) -> jnp.ndarray:
     return result
 
 def main():
-    data = load_data(path='data_cleaned.csv')
+    data = load_data(path='data/data_cleaned.csv')
     args = config()
     print(inputs_summary(data, args))
 

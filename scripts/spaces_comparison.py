@@ -1,17 +1,19 @@
-from data import load_data, mask_gt, to_relative
-from utils import inputs_summary
-from train import mean_confidence_interval
-from optimization import optimize_gd, distance_computors, full_distance_computors
+from capemb.data import load_data, mask_gt, to_relative
+from capemb.utils import inputs_summary
+from scripts.train import mean_confidence_interval
+from capemb.optimization import optimize_gd, distance_computors, full_distance_computors
 import jax.numpy as jnp
 import numpy as np
 from jax import jit
-from plots import plot_dists, plot_umap
+from capemb.plots import plot_dists, plot_umap
 from matplotlib import pyplot as plt
 import umap
 from dataclasses import dataclass
 import pandas as pd
 import seaborn as sns
 
+
+sns.set_context("talk")
 
 @dataclass
 class Args:
@@ -91,9 +93,10 @@ def plot_dists(all_dists, all_masked_indexes, data_numpy, ax):
         predictions_df,
         x="x",
         y="y",
-        hue="Number of Fine-tunings",
-        palette="viridis",
-        style="Split",
+        # hue="Number of Fine-tunings",
+        hue="Split",
+        # palette="viridis",
+        # style="Split",
         ax=ax,
     )
     sns.despine()
@@ -117,7 +120,7 @@ def plot_dists(all_dists, all_masked_indexes, data_numpy, ax):
 
 
 def main():
-    data = load_data(path="data.csv")
+    data = load_data(path="data/data.csv")
     print(inputs_summary(data, args))
     data_numpy = data.to_numpy()
     if args.normalize:
@@ -172,8 +175,8 @@ def main():
         global_max = max(global_max, max_)
 
     norm = plt.Normalize(global_min, global_max)
-    sm = plt.cm.ScalarMappable(cmap="viridis", norm=norm)
-    plt.colorbar(sm, label="Number of fine-tunings", ax=ax)
+    # sm = plt.cm.ScalarMappable(cmap="viridis", norm=norm)
+    # plt.colorbar(sm, label="Number of fine-tunings", ax=ax)
     plt.savefig("plots/error.pdf", dpi=300, bbox_inches="tight")
     plt.rcParams.update(plt.rcParamsDefault)
     print("end !")

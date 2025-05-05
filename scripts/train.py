@@ -9,16 +9,16 @@ import warnings
 import scipy.stats
 
 import seaborn as sns
-from utils import inputs_summary
-from data import load_data, to_relative, mask_gt
+from capemb.utils import inputs_summary
+from capemb.data import load_data, to_relative, mask_gt
 import pandas as pd
-from optimization import (
+from capemb.optimization import (
     optimize_gd,
     deserialize_network_params,
     distance_computors,
     full_distance_computors,
 )
-from plots import plot_dists, plot_umap
+from capemb.plots import plot_dists, plot_umap
 
 jax.config.update("jax_enable_x64", True)
 jax.config.update("jax_platform_name", "cpu")
@@ -103,7 +103,7 @@ def main(args: argparse.Namespace):
 
     if args.dims <= 2 or not args.no_umap:
         fig, ax = plot_umap(optim_coords, data)
-        plt.savefig("plots/result.png", bbox_inches="tight", dpi=300)
+        plt.savefig("plots/result.pdf", bbox_inches="tight", dpi=300)
 
     fig, ax = plot_dists(all_dists, all_masked_indexes, data_numpy)
     plt.savefig("plots/error.pdf", dpi=300, bbox_inches="tight")
