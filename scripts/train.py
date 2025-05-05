@@ -114,7 +114,7 @@ def main(args: argparse.Namespace):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="train.py",
-        description="Embed the given dataset in a n-dimensional space using MultiDimensional Scaling.",
+        description="Embed the given dataset in a n-dimensional space.",
     )
     parser.add_argument("data", type=str, help="Path to the dataset to embed.")
     parser.add_argument(
