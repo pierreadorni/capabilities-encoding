@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import jax.numpy as jnp
 from jax import jit
@@ -87,6 +88,9 @@ def main(args: argparse.Namespace):
     optim_params = optims_params_history[np.argmin(val_errors)]
     # unravel the parameters
 
+    # create results directory if it does not exist
+    if not os.path.exists("results"):
+        os.makedirs("results")
     np.save("results/optim_params.npy", optim_params)
 
     optim_coords = (
